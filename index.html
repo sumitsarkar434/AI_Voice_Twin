@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sumit Sarkar — AI Voice Twin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@0,400;0,500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:    #0a0a0f;
+    --bg2:   #111118;
+    --bg3:   #1a1a24;
+    --bg4:   #22222f;
+    --border:  rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text:  #f0eff8;
+    --text2: #9997b3;
+    --text3: #5a5870;
+    --accent:     #7c6bff;
+    --accent2:    #a093ff;
+    --accent-bg:  rgba(124,107,255,0.12);
+    --accent-bd:  rgba(124,107,255,0.30);
+    --green: #1adf8a;
+    --red:   #ff6b6b;
+    --ff:    'Syne', sans-serif;
+    --fm:    'DM Mono', monospace;
+    --r:  12px;
+    --rl: 18px;
+    --rx: 24px;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--ff); overflow: hidden; }
+
+  /* APP */
+  #app { display: flex; height: 100vh; flex-direction: column; animation: fi .4s ease; }
+  @keyframes fi { from { opacity:0 } to { opacity:1 } }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    flex-shrink: 0; z-index: 2;
+  }
+  .t-av {
+    width:40px; height:40px; border-radius:50%;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:800; color:#fff; flex-shrink:0; position:relative;
+  }
+  .t-av.speaking::after {
+    content:''; position:absolute; inset:-3px; border-radius:50%;
+    border:2px solid var(--green);
+    animation: rp 1.2s ease-in-out infinite;
+  }
+  @keyframes rp { 0%,100%{transform:scale(1);opacity:.8} 50%{transform:scale(1.18);opacity:0} }
+  .t-info { flex:1; min-width:0; }
+  .t-info h1 { font-size:15px; font-weight:700; letter-spacing:-.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-info p  { font-size:11px; font-family:var(--fm); color:var(--text2); margin-top:2px; }
+  .sdot {
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--green); margin-right:5px;
+    animation: gl 2.5s ease-in-out infinite;
+  }
+  @keyframes gl { 0%,100%{box-shadow:0 0 0 0 var(--green);opacity:1} 50%{box-shadow:0 0 6px 2px var(--green);opacity:.7} }
+  .t-acts { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+  .ibtn {
+    width:34px; height:34px; border-radius:8px;
+    border:1px solid var(--border2); background:transparent;
+    color:var(--text2); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; transition:all .15s;
+  }
+  .ibtn:hover { background:var(--bg3); color:var(--text); }
+  .ibtn.on { background:var(--accent-bg); border-color:var(--accent-bd); color:var(--accent2); }
+
+  /* BODY */
+  .abody { display:flex; flex:1; overflow:hidden; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width:214px; border-right:1px solid var(--border);
+    background:var(--bg2);
+    display:flex; flex-direction:column;
+    padding:12px 8px; gap:2px;
+    overflow-y:auto; flex-shrink:0;
+  }
+  .sidebar::-webkit-scrollbar { width:3px; }
+  .sidebar::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
+  .slbl {
+    font-size:10px; font-family:var(--fm); color:var(--text3);
+    letter-spacing:.1em; text-transform:uppercase;
+    padding:4px 8px 6px;
+  }
+  .sbtn {
+    padding:8px 10px; border-radius:8px; border:none;
+    background:transparent; color:var(--text2);
+    font-size:12px; font-family:var(--ff); font-weight:500;
+    cursor:pointer; text-align:left; line-height:1.4;
+    transition:all .15s; width:100%;
+  }
+  .sbtn:hover { background:var(--bg3); color:var(--text); }
+  .sbtn.active { background:var(--accent-bg); color:var(--accent2); }
+  .sdiv { height:1px; background:var(--border); margin:4px 0; }
+
+  /* CHAT WRAP */
+  .cwrap { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  .msgs {
+    flex:1; overflow-y:auto; padding:20px;
+    display:flex; flex-direction:column; gap:14px;
+    scroll-behavior:smooth;
+  }
+  .msgs::-webkit-scrollbar { width:4px; }
+  .msgs::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
+
+  /* EMPTY */
+  .empty {
+    flex:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:2rem; color:var(--text3);
+    animation: fi .4s ease;
+  }
+  .eicon {
+    width:72px; height:72px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--green));
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; font-weight:800; color:#fff;
+    box-shadow:0 0 40px rgba(124,107,255,.25);
+  }
+  .empty h2 { font-size:17px; font-weight:700; color:var(--text); }
+  .empty p  { font-size:13px; line-height:1.7; max-width:340px; color:var(--text2); }
+  .echips { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:420px; }
+  .echip {
+    padding:6px 14px; border-radius:100px;
+    border:1px solid var(--border2); background:var(--bg3);
+    color:var(--text2); font-size:12px; font-weight:500;
+    cursor:pointer; transition:all .15s;
+  }
+  .echip:hover { background:var(--accent-bg); border-color:var(--accent-bd); color:var(--accent2); }
+
+  /* MESSAGES */
+  .msg { display:flex; gap:10px; animation:mi .25s ease; max-width:800px; }
+  @keyframes mi { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  .msg.user { flex-direction:row-reverse; align-self:flex-end; }
+  .msg.bot  { align-self:flex-start; }
+  .mav {
+    width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800; flex-shrink:0; margin-top:2px;
+  }
+  .msg.user .mav { background:var(--bg4); color:var(--text2); border:1px solid var(--border2); }
+  .msg.bot  .mav { background:linear-gradient(135deg,var(--accent),var(--green)); color:#fff; }
+  .mcont { display:flex; flex-direction:column; max-width:calc(100% - 42px); }
+  .mbub {
+    padding:12px 16px; border-radius:16px;
+    font-size:14px; line-height:1.75;
+  }
+  .msg.user .mbub {
+    background:var(--accent-bg); border:1px solid var(--accent-bd);
+    color:var(--accent2); border-radius:16px 4px 16px 16px; font-weight:500;
+  }
+  .msg.bot .mbub {
+    background:var(--bg3); border:1px solid var(--border);
+    color:var(--text); border-radius:4px 16px 16px 16px;
+  }
+  .macts { display:flex; gap:6px; margin-top:5px; padding:0 2px; }
+  .mact {
+    padding:3px 10px; border-radius:100px;
+    border:1px solid var(--border); background:transparent;
+    color:var(--text3); font-size:10px; font-family:var(--fm);
+    cursor:pointer; transition:all .15s;
+  }
+  .mact:hover { background:var(--bg3); color:var(--text2); }
+  .mmeta {
+    font-size:10px; font-family:var(--fm);
+    color:var(--text3); margin-top:4px; padding:0 4px;
+  }
+  .msg.user .mmeta { text-align:right; }
+
+  /* TYPING */
+  .typing { display:flex; gap:10px; align-self:flex-start; animation:mi .25s ease; }
+  .tbub {
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:4px 16px 16px 16px;
+    padding:14px 18px; display:flex; gap:5px; align-items:center;
+  }
+  .tdot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:td 1s ease-in-out infinite; }
+  .tdot:nth-child(2){animation-delay:.15s} .tdot:nth-child(3){animation-delay:.3s}
+  @keyframes td { 0%,100%{transform:translateY(0);opacity:.3} 50%{transform:translateY(-5px);opacity:1} }
+
+  /* WAVE */
+  .wavebar { height:28px; display:flex; align-items:center; gap:3px; padding:0 20px; flex-shrink:0; }
+  .wlane { display:flex; align-items:center; gap:3px; }
+  .wseg { width:3px; border-radius:2px; background:var(--accent); height:4px; }
+  .wlane.on .wseg { animation:ws .5s ease-in-out infinite alternate; }
+  .wlane.on .wseg:nth-child(1){animation-delay:0s}
+  .wlane.on .wseg:nth-child(2){animation-delay:.07s}
+  .wlane.on .wseg:nth-child(3){animation-delay:.14s}
+  .wlane.on .wseg:nth-child(4){animation-delay:.21s}
+  .wlane.on .wseg:nth-child(5){animation-delay:.28s}
+  .wlane.on .wseg:nth-child(6){animation-delay:.35s}
+  .wlane.on .wseg:nth-child(7){animation-delay:.42s}
+  @keyframes ws { from{height:3px} to{height:18px} }
+  .wlbl { font-size:11px; font-family:var(--fm); color:var(--text3); margin-left:8px; opacity:0; transition:opacity .3s; }
+  .wlbl.on { opacity:1; color:var(--green); }
+
+  /* INPUT */
+  .ibar { padding:10px 20px 18px; border-top:1px solid var(--border); background:var(--bg2); flex-shrink:0; }
+  .irow {
+    display:flex; gap:8px; align-items:flex-end;
+    background:var(--bg3); border:1px solid var(--border2);
+    border-radius:var(--rl); padding:8px 8px 8px 16px;
+    transition:border-color .2s;
+  }
+  .irow:focus-within { border-color:var(--accent-bd); }
+  .cinput {
+    flex:1; background:transparent; border:none;
+    color:var(--text); font-size:14px; font-family:var(--ff);
+    resize:none; outline:none;
+    min-height:24px; max-height:120px; line-height:1.6; padding:4px 0;
+  }
+  .cinput::placeholder { color:var(--text3); }
+  .sbtn2 {
+    width:36px; height:36px; border-radius:10px; border:none;
+    background:var(--accent); color:#fff; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; flex-shrink:0;
+    transition:background .15s, transform .1s, opacity .15s;
+  }
+  .sbtn2:hover { background:var(--accent2); }
+  .sbtn2:active { transform:scale(.93); }
+  .sbtn2:disabled { opacity:.35; cursor:not-allowed; }
+  .ihint { font-size:11px; font-family:var(--fm); color:var(--text3); text-align:center; margin-top:8px; }
+  .ihint kbd { background:var(--bg4); border:1px solid var(--border2); padding:1px 5px; border-radius:4px; font-size:10px; }
+
+  /* TOAST */
+  .toast {
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+    background:#2a1010; border:1px solid rgba(255,107,107,.35);
+    color:var(--red); padding:10px 20px; border-radius:var(--r);
+    font-size:13px; font-family:var(--fm);
+    z-index:99; max-width:92vw; text-align:center;
+    animation:fi .2s ease;
+  }
+
+  @media(max-width:640px) {
+    .sidebar{display:none}
+    .topbar,.ibar{padding:12px}
+    .msgs{padding:12px}
+    .echips{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="t-av" id="tav">SS</div>
+    <div class="t-info">
+      <h1>Sumit Sarkar — AI Voice Twin</h1>
+      <p><span class="sdot"></span>online · AI/ML Engineering Student · GPT-4o</p>
+    </div>
+    <div class="t-acts">
+      <button class="ibtn" id="vbtn" onclick="toggleVoice()" title="Toggle voice (V)">🔈</button>
+      <button class="ibtn" onclick="clearChat()" title="New conversation (N)">↺</button>
+    </div>
+  </div>
+
+  <div class="abody">
+
+    <aside class="sidebar">
+      <div class="slbl">The 5 Key Questions</div>
+      <button class="sbtn" onclick="ask(this,'What should we know about your life story in a few sentences?')">📖 Life story</button>
+      <button class="sbtn" onclick="ask(this,'What is your number one superpower?')">⚡ #1 Superpower</button>
+      <button class="sbtn" onclick="ask(this,'What are the top 3 areas you would like to grow in?')">🌱 Top 3 growth areas</button>
+      <button class="sbtn" onclick="ask(this,'What misconception do your coworkers have about you?')">🤔 Coworker misconceptions</button>
+      <button class="sbtn" onclick="ask(this,'How do you push your boundaries and limits?')">🚀 Pushing boundaries</button>
+      <div class="sdiv"></div>
+      <div class="slbl">More Questions</div>
+      <button class="sbtn" onclick="ask(this,'Why are you passionate about AI and machine learning?')">🤖 Why AI/ML?</button>
+      <button class="sbtn" onclick="ask(this,'Tell me about a challenging project you worked on.')">💡 Tough project</button>
+      <button class="sbtn" onclick="ask(this,'Where do you see yourself in 5 years?')">🔭 5-year vision</button>
+      <button class="sbtn" onclick="ask(this,'How do you handle failure or setbacks?')">💪 Handling failure</button>
+      <button class="sbtn" onclick="ask(this,'What excites you most about Generative AI and RAG systems?')">✨ GenAI & RAG</button>
+      <button class="sbtn" onclick="ask(this,'How do you stay current with fast-moving AI research?')">📚 Staying current</button>
+      <button class="sbtn" onclick="ask(this,'Tell me about a time you worked effectively in a team.')">🤝 Teamwork</button>
+      <button class="sbtn" onclick="ask(this,'Why should we hire you?')">🏆 Why hire me?</button>
+    </aside>
+
+    <div class="cwrap">
+      <div class="msgs" id="chat">
+        <div class="empty" id="empty">
+          <div class="eicon">SS</div>
+          <h2>Hi, I'm Sumit's AI Twin</h2>
+          <p>Ask me any interview question — I'll answer exactly as Sumit would. Pick one below or type your own.</p>
+          <div class="echips">
+            <span class="echip" onclick="chipAsk('What should we know about your life story in a few sentences?')">Life story</span>
+            <span class="echip" onclick="chipAsk('What is your number one superpower?')">#1 Superpower</span>
+            <span class="echip" onclick="chipAsk('What are the top 3 areas you would like to grow in?')">Top 3 growth areas</span>
+            <span class="echip" onclick="chipAsk('What misconception do your coworkers have about you?')">Misconceptions</span>
+            <span class="echip" onclick="chipAsk('How do you push your boundaries and limits?')">Pushing limits</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wavebar">
+        <div class="wlane" id="wave">
+          <div class="wseg"></div><div class="wseg"></div><div class="wseg"></div>
+          <div class="wseg"></div><div class="wseg"></div><div class="wseg"></div>
+          <div class="wseg"></div>
+        </div>
+        <span class="wlbl" id="wlbl">speaking…</span>
+      </div>
+
+      <div class="ibar">
+        <div class="irow">
+          <textarea class="cinput" id="inp" placeholder="Ask an interview question…" rows="1"
+            onkeydown="handleKey(event)" oninput="resize(this)"></textarea>
+          <button class="sbtn2" id="sbtn" onclick="send()">➤</button>
+        </div>
+        <p class="ihint"><kbd>Enter</kbd> send &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> new line &nbsp;·&nbsp; 🔈 toggle voice</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let history = [];
+let voiceOn = false;
+
+/* ── VOICE ── */
+function toggleVoice() {
+  voiceOn = !voiceOn;
+  const b = document.getElementById('vbtn');
+  b.textContent = voiceOn ? '🔊' : '🔈';
+  b.classList.toggle('on', voiceOn);
+  if (!voiceOn && window.speechSynthesis) { window.speechSynthesis.cancel(); setWave(false); }
+}
+
+function setWave(on) {
+  document.getElementById('wave').classList.toggle('on', on);
+  document.getElementById('wlbl').classList.toggle('on', on);
+  document.getElementById('tav').classList.toggle('speaking', on);
+}
+
+function speak(text) {
+  if (!voiceOn || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/[*_~`#\[\]]/g,'').trim());
+  u.rate = 0.95; u.pitch = 1.0; u.volume = 1.0;
+  const vv = window.speechSynthesis.getVoices();
+  const v = vv.find(v=>v.lang==='en-IN') || vv.find(v=>/india/i.test(v.name))
+    || vv.find(v=>v.lang.startsWith('en')&&/male/i.test(v.name)) || vv.find(v=>v.lang.startsWith('en'));
+  if (v) u.voice = v;
+  u.onstart = ()=>setWave(true);
+  u.onend = u.onerror = ()=>setWave(false);
+  window.speechSynthesis.speak(u);
+}
+
+/* ── UTILS ── */
+function resize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} }
+function ts() { return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+function rmEmpty() { const e=document.getElementById('empty'); if(e)e.remove(); }
+
+function toast(msg, ms=5000) {
+  document.querySelector('.toast')?.remove();
+  const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
+  document.body.appendChild(d); setTimeout(()=>d.remove(), ms);
+}
+
+/* ── RENDER ── */
+function addMsg(role, text) {
+  rmEmpty();
+  const chat=document.getElementById('chat');
+  const wrap=document.createElement('div'); wrap.className='msg '+role;
+
+  const av=document.createElement('div'); av.className='mav';
+  av.textContent = role==='user' ? 'You' : 'SS';
+
+  const cont=document.createElement('div'); cont.className='mcont';
+
+  const bub=document.createElement('div'); bub.className='mbub';
+  bub.textContent=text;
+  cont.appendChild(bub);
+
+  if (role==='bot') {
+    const acts=document.createElement('div'); acts.className='macts';
+    const rb=document.createElement('button'); rb.className='mact';
+    rb.textContent='🔊 replay'; rb.onclick=()=>speak(text);
+    acts.appendChild(rb); cont.appendChild(acts);
+  }
+
+  const meta=document.createElement('div'); meta.className='mmeta'; meta.textContent=ts();
+  cont.appendChild(meta);
+
+  wrap.appendChild(av); wrap.appendChild(cont);
+  chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight;
+}
+
+function addTyping() {
+  rmEmpty();
+  const chat=document.getElementById('chat');
+  const w=document.createElement('div'); w.className='typing'; w.id='typing';
+  const av=document.createElement('div');
+  av.style.cssText='width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--green));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;margin-top:2px';
+  av.textContent='SS';
+  const b=document.createElement('div'); b.className='tbub';
+  b.innerHTML='<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';
+  w.appendChild(av); w.appendChild(b);
+  chat.appendChild(w); chat.scrollTop=chat.scrollHeight;
+  return w;
+}
+
+/* ── PRESETS ── */
+function ask(el, q) {
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('inp').value=q;
+  send();
+}
+
+function chipAsk(q) { document.getElementById('inp').value=q; send(); }
+
+/* ── CLEAR ── */
+function clearChat() {
+  history=[];
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+  if(window.speechSynthesis) window.speechSynthesis.cancel();
+  setWave(false);
+  document.getElementById('chat').innerHTML=`
+    <div class="empty" id="empty">
+      <div class="eicon">SS</div>
+      <h2>Hi, I'm Sumit's AI Twin</h2>
+      <p>Ask me any interview question — I'll answer exactly as Sumit would. Pick one below or type your own.</p>
+      <div class="echips">
+        <span class="echip" onclick="chipAsk('What should we know about your life story in a few sentences?')">Life story</span>
+        <span class="echip" onclick="chipAsk('What is your number one superpower?')">#1 Superpower</span>
+        <span class="echip" onclick="chipAsk('What are the top 3 areas you would like to grow in?')">Top 3 growth areas</span>
+        <span class="echip" onclick="chipAsk('What misconception do your coworkers have about you?')">Misconceptions</span>
+        <span class="echip" onclick="chipAsk('How do you push your boundaries and limits?')">Pushing limits</span>
+      </div>
+    </div>`;
+}
+
+/* ── SEND ── */
+async function send() {
+  const inp=document.getElementById('inp');
+  const btn=document.getElementById('sbtn');
+  const q=inp.value.trim();
+  if(!q||btn.disabled) return;
+
+  inp.value=''; inp.style.height='auto';
+  btn.disabled=true;
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+
+  addMsg('user', q);
+  history.push({role:'user', content:q});
+
+  const typing=addTyping();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:history})
+    });
+
+    typing.remove();
+
+    const data = await res.json().catch(()=>({}));
+
+    if (!res.ok) {
+      const errMsg = data.error || `Error ${res.status} — please try again.`;
+      toast('⚠️ ' + errMsg);
+      history.pop();
+      btn.disabled=false;
+      inp.focus();
+      return;
+    }
+
+    const reply = data.reply || "Could you rephrase that?";
+    history.push({role:'assistant', content:reply});
+    addMsg('bot', reply);
+    speak(reply);
+
+  } catch(err) {
+    typing.remove();
+    toast('⚠️ Network error — check your connection and try again.');
+    history.pop();
+  }
+
+  btn.disabled=false;
+  inp.focus();
+}
+
+/* ── KEYBOARD SHORTCUTS ── */
+document.addEventListener('keydown', e => {
+  if (document.activeElement === document.getElementById('inp')) return;
+  if (e.key==='v') toggleVoice();
+  if (e.key==='n') clearChat();
+});
+
+// Preload voices
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = ()=>window.speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>
